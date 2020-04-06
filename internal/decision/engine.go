@@ -152,6 +152,9 @@ type Engine struct {
 	// an external ledger dealing with peer scores
 	scoreLedger ScoreLedger
 
+	// A channel to log wantlist messages to.
+	wantListChan chan IncrementalWantListToLog
+
 	ticker *time.Ticker
 
 	taskWorkerLock  sync.Mutex
@@ -182,6 +185,7 @@ func newEngine(bs bstore.Blockstore, bstoreWorkerCount int, peerTagger PeerTagge
 	e := &Engine{
 		ledgerMap:                       make(map[peer.ID]*ledger),
 		scoreLedger:                     scoreLedger,
+		wantListChan: make(chan IncrementalWantListToLog, 100),
 		bsm:                             newBlockstoreManager(bs, bstoreWorkerCount),
 		peerTagger:                      peerTagger,
 		outbox:                          make(chan (<-chan *Envelope), outboxChanBuffer),
@@ -199,6 +203,12 @@ func newEngine(bs bstore.Blockstore, bstoreWorkerCount int, peerTagger PeerTagge
 		peertaskqueue.OnPeerRemovedHook(e.onPeerRemoved),
 		peertaskqueue.TaskMerger(newTaskMerger()),
 		peertaskqueue.IgnoreFreezing(true))
+
+	err := e.setUpWantlistLogging()
+	if err != nil {
+		log.Fatalw("unable to set up wantlist logging", "err", err)
+	}
+
 	return e
 }
 
@@ -537,6 +547,14 @@ func (e *Engine) MessageReceived(ctx context.Context, p peer.ID, m bsmsg.BitSwap
 			})
 		}
 	}
+
+	// Log the wantlist changes from the message and the resulting complete wantlist
+	incremental := IncrementalWantListToLog{
+		Peer:            p.Pretty(),
+		Timestamp:       time.Now(),
+		ReceivedEntries: entries,
+	}
+	e.wantListChan <- incremental
 
 	// Push entries onto the request queue
 	if len(activeEntries) > 0 {
