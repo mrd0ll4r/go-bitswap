@@ -236,6 +236,16 @@ type IncrementalWantListToLog struct {
 	Timestamp       time.Time     `json:"timestamp"`
 	Peer            string        `json:"peer"`
 	ReceivedEntries []bsmsg.Entry `json:"received_entries"`
+	// PeerConnected is set to true if we received a PeerConnected method call
+	// with this peer.
+	PeerConnected bool `json:"peer_connected"`
+	// PeerDisconnected is set to true if we received a PeerDisconnected method
+	// call with this peer.
+	PeerDisconnected bool `json:"peer_disconnected"`
+	// ConnectEventPeerFound is only valid if either PeerConnected or
+	// PeerDisconnected are set.
+	// It tracks whether we already had a ledger entry for the peer.
+	ConnectEventPeerFound bool `json:"connect_event_peer_found"`
 }
 
 type RotateWriter struct {

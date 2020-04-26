@@ -4,6 +4,7 @@ package decision
 import (
 	"context"
 	"fmt"
+	"github.com/ipfs/go-peertaskqueue"
 	"sync"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
-	"github.com/ipfs/go-peertaskqueue"
 	"github.com/ipfs/go-peertaskqueue/peertask"
 	process "github.com/jbenet/goprocess"
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -685,6 +685,9 @@ func (e *Engine) PeerConnected(p peer.ID) {
 	_, ok := e.ledgerMap[p]
 	if !ok {
 		e.ledgerMap[p] = newLedger(p)
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: false, PeerConnected: true}
+	} else {
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: true, PeerConnected: true}
 	}
 
 	e.scoreLedger.PeerConnected(p)
@@ -694,6 +697,13 @@ func (e *Engine) PeerConnected(p peer.ID) {
 func (e *Engine) PeerDisconnected(p peer.ID) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
+
+	_, ok := e.ledgerMap[p]
+	if ok {
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: true, PeerDisconnected: true}
+	} else {
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: false, PeerDisconnected: true}
+	}
 
 	delete(e.ledgerMap, p)
 
