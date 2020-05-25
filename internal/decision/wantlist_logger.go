@@ -236,6 +236,7 @@ type IncrementalWantListToLog struct {
 	Timestamp       time.Time     `json:"timestamp"`
 	Peer            string        `json:"peer"`
 	ReceivedEntries []bsmsg.Entry `json:"received_entries"`
+	FullWantList    bool          `json:"full_want_list"`
 	// PeerConnected is set to true if we received a PeerConnected method call
 	// with this peer.
 	PeerConnected bool `json:"peer_connected"`
