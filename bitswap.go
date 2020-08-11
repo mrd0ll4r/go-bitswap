@@ -6,9 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"sync"
 	"time"
+
+	"github.com/multiformats/go-multiaddr"
 
 	delay "github.com/ipfs/go-ipfs-delay"
 
@@ -434,14 +435,14 @@ func (bs *Bitswap) receiveBlocksFrom(ctx context.Context, from peer.ID, blks []b
 
 // ReceiveMessage is called by the network interface when a new message is
 // received.
-func (bs *Bitswap) ReceiveMessage(ctx context.Context, p peer.ID, incoming bsmsg.BitSwapMessage) {
+func (bs *Bitswap) ReceiveMessage(ctx context.Context, p peer.ID, addr multiaddr.Multiaddr, incoming bsmsg.BitSwapMessage) {
 	bs.counterLk.Lock()
 	bs.counters.messagesRecvd++
 	bs.counterLk.Unlock()
 
 	// This call records changes to wantlists, blocks received,
 	// and number of bytes transfered.
-	bs.engine.MessageReceived(ctx, p, incoming)
+	bs.engine.MessageReceived(ctx, p,addr, incoming)
 	// TODO: this is bad, and could be easily abused.
 	// Should only track *useful* messages in ledger
 
@@ -525,16 +526,16 @@ func (bs *Bitswap) blockstoreHas(blks []blocks.Block) []bool {
 
 // PeerConnected is called by the network interface
 // when a peer initiates a new connection to bitswap.
-func (bs *Bitswap) PeerConnected(p peer.ID) {
+func (bs *Bitswap) PeerConnected(p peer.ID, addr multiaddr.Multiaddr) {
 	bs.pm.Connected(p)
-	bs.engine.PeerConnected(p)
+	bs.engine.PeerConnected(p,addr)
 }
 
 // PeerDisconnected is called by the network interface when a peer
 // closes a connection
-func (bs *Bitswap) PeerDisconnected(p peer.ID) {
+func (bs *Bitswap) PeerDisconnected(p peer.ID, addr multiaddr.Multiaddr) {
 	bs.pm.Disconnected(p)
-	bs.engine.PeerDisconnected(p)
+	bs.engine.PeerDisconnected(p,addr)
 }
 
 // ReceiveError is called by the network interface when an error happens

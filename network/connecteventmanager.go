@@ -1,14 +1,15 @@
 package network
 
 import (
+	"github.com/multiformats/go-multiaddr"
 	"sync"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type ConnectionListener interface {
-	PeerConnected(peer.ID)
-	PeerDisconnected(peer.ID)
+	PeerConnected(peer.ID, multiaddr.Multiaddr)
+	PeerDisconnected(peer.ID, multiaddr.Multiaddr)
 }
 
 type connectEventManager struct {
@@ -29,7 +30,7 @@ func newConnectEventManager(connListener ConnectionListener) *connectEventManage
 	}
 }
 
-func (c *connectEventManager) Connected(p peer.ID) {
+func (c *connectEventManager) Connected(p peer.ID, addr multiaddr.Multiaddr) {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 
@@ -41,11 +42,11 @@ func (c *connectEventManager) Connected(p peer.ID) {
 	state.refs++
 
 	if state.refs == 1 && state.responsive {
-		c.connListener.PeerConnected(p)
+		c.connListener.PeerConnected(p, addr)
 	}
 }
 
-func (c *connectEventManager) Disconnected(p peer.ID) {
+func (c *connectEventManager) Disconnected(p peer.ID, addr multiaddr.Multiaddr) {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 
@@ -58,13 +59,13 @@ func (c *connectEventManager) Disconnected(p peer.ID) {
 
 	if state.refs == 0 {
 		if state.responsive {
-			c.connListener.PeerDisconnected(p)
+			c.connListener.PeerDisconnected(p,addr)
 		}
 		delete(c.conns, p)
 	}
 }
 
-func (c *connectEventManager) MarkUnresponsive(p peer.ID) {
+func (c *connectEventManager) MarkUnresponsive(p peer.ID, addr multiaddr.Multiaddr) {
 	c.lk.Lock()
 	defer c.lk.Unlock()
 
@@ -74,10 +75,10 @@ func (c *connectEventManager) MarkUnresponsive(p peer.ID) {
 	}
 	state.responsive = false
 
-	c.connListener.PeerDisconnected(p)
+	c.connListener.PeerDisconnected(p,addr)
 }
 
-func (c *connectEventManager) OnMessage(p peer.ID) {
+func (c *connectEventManager) OnMessage(p peer.ID, addr multiaddr.Multiaddr) {
 	// This is a frequent operation so to avoid different message arrivals
 	// getting blocked by a write lock, first take a read lock to check if
 	// we need to modify state
@@ -101,5 +102,5 @@ func (c *connectEventManager) OnMessage(p peer.ID) {
 	}
 
 	state.responsive = true
-	c.connListener.PeerConnected(p)
+	c.connListener.PeerConnected(p,addr)
 }

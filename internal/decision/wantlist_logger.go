@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/multiformats/go-multiaddr"
 	"io"
 	"net"
 	"os"
@@ -235,6 +236,7 @@ func handleWantlistClient(wantlistBufferSize int, wlChan chan IncrementalWantLis
 type IncrementalWantListToLog struct {
 	Timestamp       time.Time     `json:"timestamp"`
 	Peer            string        `json:"peer"`
+	Address 		multiaddr.Multiaddr `json:"address"`
 	ReceivedEntries []bsmsg.Entry `json:"received_entries"`
 	FullWantList    bool          `json:"full_want_list"`
 	// PeerConnected is set to true if we received a PeerConnected method call

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ipfs/go-peertaskqueue"
+	"github.com/multiformats/go-multiaddr"
 	"sync"
 	"time"
 
@@ -550,6 +551,7 @@ func (e *Engine) MessageReceived(ctx context.Context, p peer.ID, addr multiaddr.
 
 	// Log the wantlist changes from the message and the resulting complete wantlist
 	incremental := IncrementalWantListToLog{
+		Address: addr,
 		Peer:            p.Pretty(),
 		Timestamp:       time.Now(),
 		ReceivedEntries: entries,
@@ -679,31 +681,31 @@ func (e *Engine) MessageSent(p peer.ID, m bsmsg.BitSwapMessage) {
 
 // PeerConnected is called when a new peer connects, meaning we should start
 // sending blocks.
-func (e *Engine) PeerConnected(p peer.ID) {
+func (e *Engine) PeerConnected(p peer.ID, addr multiaddr.Multiaddr) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
 	_, ok := e.ledgerMap[p]
 	if !ok {
 		e.ledgerMap[p] = newLedger(p)
-		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: false, PeerConnected: true}
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(),Address: addr,Timestamp: time.Now(), ConnectEventPeerFound: false, PeerConnected: true}
 	} else {
-		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: true, PeerConnected: true}
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(),Address: addr, Timestamp: time.Now(), ConnectEventPeerFound: true, PeerConnected: true}
 	}
 
 	e.scoreLedger.PeerConnected(p)
 }
 
 // PeerDisconnected is called when a peer disconnects.
-func (e *Engine) PeerDisconnected(p peer.ID) {
+func (e *Engine) PeerDisconnected(p peer.ID, addr multiaddr.Multiaddr) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
 	_, ok := e.ledgerMap[p]
 	if ok {
-		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: true, PeerDisconnected: true}
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(),Address: addr, Timestamp: time.Now(), ConnectEventPeerFound: true, PeerDisconnected: true}
 	} else {
-		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Timestamp: time.Now(), ConnectEventPeerFound: false, PeerDisconnected: true}
+		e.wantListChan <- IncrementalWantListToLog{Peer: p.Pretty(), Address: addr,Timestamp: time.Now(), ConnectEventPeerFound: false, PeerDisconnected: true}
 	}
 
 	delete(e.ledgerMap, p)

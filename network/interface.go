@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"github.com/multiformats/go-multiaddr"
 	"time"
 
 	bsmsg "github.com/ipfs/go-bitswap/message"
@@ -74,13 +75,14 @@ type Receiver interface {
 	ReceiveMessage(
 		ctx context.Context,
 		sender peer.ID,
+		addr multiaddr.Multiaddr,
 		incoming bsmsg.BitSwapMessage)
 
 	ReceiveError(error)
 
 	// Connected/Disconnected warns bitswap about peer connections.
-	PeerConnected(peer.ID)
-	PeerDisconnected(peer.ID)
+	PeerConnected(peer.ID, multiaddr.Multiaddr)
+	PeerDisconnected(peer.ID, multiaddr.Multiaddr)
 }
 
 // Routing is an interface to providing and finding providers on a bitswap

@@ -149,6 +149,13 @@ func (s *streamMessageSender) SendMsg(ctx context.Context, msg bsmsg.BitSwapMess
 
 // Perform a function with multiple attempts, and a timeout
 func (s *streamMessageSender) multiAttempt(ctx context.Context, fn func() error) error {
+	var addr ma.Multiaddr
+	if s.stream != nil {
+		if s.stream.Conn() != nil {
+			addr = s.stream.Conn().RemoteMultiaddr()
+		}
+	}
+
 	// Try to call the function repeatedly
 	var err error
 	for i := 0; i < s.opts.MaxRetries; i++ {
@@ -168,7 +175,7 @@ func (s *streamMessageSender) multiAttempt(ctx context.Context, fn func() error)
 
 		// Protocol is not supported, so no need to try multiple times
 		if errors.Is(err, multistream.ErrNotSupported) {
-			s.bsnet.connectEvtMgr.MarkUnresponsive(s.to)
+			s.bsnet.connectEvtMgr.MarkUnresponsive(s.to,addr)
 			return err
 		}
 
@@ -177,7 +184,7 @@ func (s *streamMessageSender) multiAttempt(ctx context.Context, fn func() error)
 
 		// Failed too many times so mark the peer as unresponsive and return an error
 		if i == s.opts.MaxRetries-1 {
-			s.bsnet.connectEvtMgr.MarkUnresponsive(s.to)
+			s.bsnet.connectEvtMgr.MarkUnresponsive(s.to,addr)
 			return err
 		}
 
@@ -400,10 +407,14 @@ func (bsnet *impl) handleNewStream(s network.Stream) {
 		}
 
 		p := s.Conn().RemotePeer()
+		var addr ma.Multiaddr
+		if s.Conn() != nil {
+			addr = s.Conn().RemoteMultiaddr()
+		}
 		ctx := context.Background()
 		log.Debugf("bitswap net handleNewStream from %s", s.Conn().RemotePeer())
-		bsnet.connectEvtMgr.OnMessage(s.Conn().RemotePeer())
-		bsnet.receiver.ReceiveMessage(ctx, p, received)
+		bsnet.connectEvtMgr.OnMessage(s.Conn().RemotePeer(),addr)
+		bsnet.receiver.ReceiveMessage(ctx, p,addr, received)
 		atomic.AddUint64(&bsnet.stats.MessagesRecvd, 1)
 	}
 }
@@ -431,7 +442,7 @@ func (nn *netNotifiee) Connected(n network.Network, v network.Conn) {
 		return
 	}
 
-	nn.impl().connectEvtMgr.Connected(v.RemotePeer())
+	nn.impl().connectEvtMgr.Connected(v.RemotePeer(),v.RemoteMultiaddr())
 }
 func (nn *netNotifiee) Disconnected(n network.Network, v network.Conn) {
 	// ignore transient connections
@@ -439,7 +450,7 @@ func (nn *netNotifiee) Disconnected(n network.Network, v network.Conn) {
 		return
 	}
 
-	nn.impl().connectEvtMgr.Disconnected(v.RemotePeer())
+	nn.impl().connectEvtMgr.Disconnected(v.RemotePeer(),v.RemoteMultiaddr())
 }
 func (nn *netNotifiee) OpenedStream(n network.Network, s network.Stream) {}
 func (nn *netNotifiee) ClosedStream(n network.Network, v network.Stream) {}

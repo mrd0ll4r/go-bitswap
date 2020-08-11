@@ -296,8 +296,8 @@ func (s *Session) nonBlockingEnqueue(o op) {
 func (s *Session) run(ctx context.Context) {
 	go s.sws.Run()
 
-	s.idleTick = time.NewTimer(s.initialSearchDelay)
-	s.periodicSearchTimer = time.NewTimer(s.periodicSearchDelay.NextWaitTime())
+	s.idleTick = time.NewTimer(s.initialSearchDelay) // 1 second by default
+	s.periodicSearchTimer = time.NewTimer(s.periodicSearchDelay.NextWaitTime()) // 1 minute by default
 	for {
 		select {
 		case oper := <-s.incoming:
